@@ -14,6 +14,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 use work.Types.ALL;
+use work.Functions.ALL;
 
 entity VGAPixelProcessor is
     Port (
@@ -35,33 +36,6 @@ entity VGAPixelProcessor is
 end VGAPixelProcessor;
 
 architecture Behavioral of VGAPixelProcessor is
-    function isPixelInside (
-            pixel_x : integer range 0 to 1279;
-            pixel_y : integer range 0 to 1079;
-
-            position : POSITION_REGISTER;
-
-            width  : integer range 0 to 1279;
-            height : integer range 0 to 1079
-        )
-    return STD_LOGIC is
-        variable return_value : STD_LOGIC := '0';
-    begin
-        -- Check if the current pixel is inside of this object
-        if (
-            pixel_x >= position.X         and
-            pixel_x <  position.X + width and
-
-            pixel_y >= position.Y         and
-            pixel_y <  position.Y + height
-        ) then
-            return_value := '1';
-        else
-            return_value := '0';
-        end if;
-        
-        return return_value;
-    end function isPixelInside;
 begin
     pixel_process : process(in_pixel_clk)
         variable r : STD_LOGIC_VECTOR(3 downto 0) := "0000";
@@ -73,6 +47,16 @@ begin
             r := in_global_registers.background_color.R;
             g := in_global_registers.background_color.G;
             b := in_global_registers.background_color.B;
+
+            -- Center dotted lines
+            if ((in_pixel_y / (2**4)) mod 2 = 1 and
+                in_pixel_x >= (1280 / 2) - 2 and
+                in_pixel_x <= (1280 / 2) + 2
+            ) then
+                r := "0010";
+                g := "0010";
+                b := "0010";
+            end if;
 
             -- Player 1 Paddle Pixel
             if (isPixelInside(
@@ -112,6 +96,35 @@ begin
                 g := in_global_registers.ball_color.G;
                 b := in_global_registers.ball_color.B;
             end if;
+
+            -- Player 1 Segments
+            player_1_segment_loop : for i in 0 to 3 loop
+                if (isInsideActiveSegment(
+                    in_pixel_x,
+                    in_pixel_y,
+
+                    in_global_registers.player_1_segments(i)
+                ) = '1') then
+                    r := "1111";
+                    g := "0111";
+                    b := "0000";
+                end if;
+            end loop player_1_segment_loop;
+            
+            -- Player 1 Segments
+            player_2_segment_loop : for i in 0 to 3 loop
+                if (isInsideActiveSegment(
+                    in_pixel_x,
+                    in_pixel_y,
+
+                    in_global_registers.player_2_segments(i)
+                ) = '1') then
+                    r := "0000";
+                    g := "1110";
+                    b := "1111";
+                end if;
+            end loop player_2_segment_loop;
+            
 
             out_pixel_r <= r;
             out_pixel_g <= g;

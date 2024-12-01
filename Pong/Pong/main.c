@@ -29,8 +29,8 @@ int16_t player_1_position_y = INITIAL_PLAYER_Y;
 int16_t player_2_position_x = SCREEN_WIDTH - 25 - 100 - 1;
 int16_t player_2_position_y = INITIAL_PLAYER_Y;
 
-uint8_t player_1_score = 0;
-uint8_t player_2_score = 0;
+uint16_t player_1_score = 0;
+uint16_t player_2_score = 0;
 
 uint8_t  ball_bounced_off_paddle = 0;
 
@@ -44,12 +44,17 @@ int16_t handlePlayerMovement(int16_t player_position, int16_t player_input, int8
 
 uint8_t collisionDetected(int16_t x1, int16_t y1, uint8_t size1x, uint8_t size1y, int16_t x2, int16_t y2, uint8_t size2x, uint8_t size2y);
 
+uint8_t numberToSegments(uint8_t number); // Number between 0-9 (inclusive)
+
+void transmitPlayerScore(uint8_t player);
+
 int main(void) {
 	IO_Initialize();
 	TIMER_Initialize();
 	
 	sei(); // Enable global interrupts
 	
+	// General
 	USART_TransmitCommand(CreateBackgroundColorCommand(0b0000000000000000));
 	USART_TransmitCommand(CreateBallPositionCommand(ball_position_x, ball_position_y));
 	USART_TransmitCommand(CreateBallColorCommand(ball_color));
@@ -57,6 +62,18 @@ int main(void) {
 	USART_TransmitCommand(CreatePlayerPositionCommand(player_2_position_y, 1));
 	USART_TransmitCommand(CreatePlayerColorCommand(0b0000111100000000, 0));
 	USART_TransmitCommand(CreatePlayerColorCommand(0b0000000000001111, 1));
+	
+	// Player 1 score digits (temp values)
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(0), 0, 0));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(1), 1, 0));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(2), 2, 0));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(3), 3, 0));
+	
+	// Player 2 score digits (temp values)
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(6), 0, 1));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(7), 1, 1));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(8), 2, 1));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(9), 3, 1));
 	
 	// Seed RNG
 	srand(time(NULL));
@@ -143,13 +160,13 @@ void TIMER_Initialize() {
 // -------------------
 
 void ProcessFrame() {
-	uint8_t input_byte = PINC & 0b00011111;
+	volatile uint8_t input_byte = PINC & 0b00011111;
 	
 	// Extract general purpose button inputs
 	uint8_t reset_triggered = (input_byte & 0b00000100) != 0;
 	
 	// Extract player 1 inputs from input byte
-	uint8_t player_1_input_up   = (input_byte& 0b00000001) != 0;
+	uint8_t player_1_input_up   = (input_byte & 0b00000001) != 0;
 	uint8_t player_1_input_down = (input_byte & 0b00000010) != 0;
 
 	// Extract player 2 inputs from input byte
@@ -226,6 +243,7 @@ void ProcessFrame() {
 				if (ball_position_x <= 0) {
 					// Ball has hit the border of Player 1
 					player_2_score++;
+					dirty_flags |= Player2ScoreDirty;
 					
 					ball_velocity_x *= -1;
 					ball_position_x *= -1;
@@ -239,11 +257,10 @@ void ProcessFrame() {
 					ball_velocity_y = (rand() % BALL_SLOW_VELOCITY) * ((rand() % 2) ? 1 : -1);
 					
 					ball_bounced_off_paddle = 0;
-					
-					// TODO: Change velocity to be random in player 2's direction
 				} else if (ball_position_x >= (SCREEN_WIDTH - BALL_SIZE - 1)) {
 					// Ball has hit the border of Player 2
 					player_1_score++;
+					dirty_flags |= Player1ScoreDirty;
 					
 					ball_velocity_x *= -1;
 					ball_position_x = (SCREEN_WIDTH - BALL_SIZE - 1) - (ball_position_x - (SCREEN_WIDTH - BALL_SIZE - 1));
@@ -344,6 +361,14 @@ void SendCommands() {
 	// Transmit Ball Color
 	if ((dirty_flags & BallColorDirty) != 0)
 		USART_TransmitCommand(CreateBallColorCommand(ball_color));
+		
+	// Transmit Player 1 Score
+	if ((dirty_flags & Player1ScoreDirty) != 0)
+		transmitPlayerScore(0);
+	
+	// Transmit Player 2 Score
+	if ((dirty_flags & Player2ScoreDirty) != 0)
+		transmitPlayerScore(1);
 	
 	// Reset the dirty flags
 	dirty_flags = None;
@@ -444,6 +469,17 @@ uint32_t CreatePlayerColorCommand(const uint16_t rgb, const uint8_t player) {
 	return command;
 }
 
+uint32_t CreatePlayerScoreDigitCommand(const uint8_t segments, const uint8_t digit, const uint8_t player) {
+	uint32_t command = 0;
+	
+	FillCommandBits(6, &command);
+	command |= segments;
+	command |= (digit         << 7);
+	command |= ((player != 0) << 9);
+
+	return command;
+}
+
 // Yeah this is where I got lazy with proper C
 
 // UTILITY FUNCTIONS
@@ -474,9 +510,67 @@ uint8_t collisionDetected(int16_t x1, int16_t y1, uint8_t size1x, uint8_t size1y
 		min1x < max2x &&
 		max1x > min2x &&
 		min1y < max2y &&
-		max1y > max2y
+		max1y > min2y
 	)
 		return 1;
 	
 	return 0;
+}
+
+uint8_t numberToSegments(uint8_t number) {
+	switch (number) {
+	case 0:
+		return 0b00111111;
+	case 1:
+		return 0b00000110;
+	case 2:
+		return 0b01011011;
+	case 3:
+		return 0b01001111;
+	case 4:
+		return 0b01100110;
+	case 5:
+		return 0b01101101;
+	case 6:
+		return 0b01111101;
+	case 7:
+		return 0b00000111;
+	case 8:
+		return 0b01111111;
+	case 9:
+		return 0b01101111;
+	default:
+		return 0b00000000;
+	}
+}
+
+void transmitPlayerScore(uint8_t player) {
+	uint8_t highest_digit = 0;
+	uint8_t high_digit	  = 0;
+	uint8_t low_digit	  = 0;
+	uint8_t lowest_digit  = 0;
+	
+	// BUG: Somehow this is effecting player 1's position???????
+	//  . It seems to set player 1 input 'up' (which goes down in this case) to 1, and I honestly do not know why
+	
+	if (player == 0) {
+		// Player 1 score
+		highest_digit = (uint8_t) (player_1_score / (uint16_t) 1000) % (uint16_t) 10;
+		high_digit    = (uint8_t) (player_1_score / (uint16_t) 100)  % (uint16_t) 10;
+		low_digit     = (uint8_t) (player_1_score / (uint16_t) 10)   % (uint16_t) 10;
+		lowest_digit  = (uint8_t) (player_1_score / (uint16_t) 1)    % (uint16_t) 10;
+	} else {
+		// Player 2 score
+		highest_digit = (uint8_t) (player_2_score / (uint16_t) 1000) % (uint16_t) 10;
+		high_digit    = (uint8_t) (player_2_score / (uint16_t) 100)  % (uint16_t) 10;
+		low_digit     = (uint8_t) (player_2_score / (uint16_t) 10)   % (uint16_t) 10;
+		lowest_digit  = (uint8_t) (player_2_score / (uint16_t) 1)    % (uint16_t) 10;
+	}
+	
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(0, 0, player)); // I dont know why this is necessary, but it keeps the segments from breaking?
+	
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(lowest_digit),  3, player));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(low_digit),     2, player));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(high_digit),    1, player));
+	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(highest_digit), 0, player));
 }

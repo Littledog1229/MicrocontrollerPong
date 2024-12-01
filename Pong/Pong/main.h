@@ -53,11 +53,13 @@
 #define BALL_INITIAL_POSITION_Y (uint16_t) 498;
 
 enum DirtyFlags {
-	None           = 0,
-	BallDirty      = 1 << 0,
-	Player1Dirty   = 1 << 1,
-	Player2Dirty   = 1 << 2,
-	BallColorDirty = 1 << 3
+	None              = 0,
+	BallDirty         = 1 << 0,
+	Player1Dirty      = 1 << 1,
+	Player2Dirty      = 1 << 2,
+	BallColorDirty    = 1 << 3,
+	Player1ScoreDirty = 1 << 4,
+	Player2ScoreDirty = 1 << 5
 };
 
 enum GameState {
@@ -90,10 +92,11 @@ uint8_t USART_ReceiveByte();
 
 void FillCommandBits(const uint8_t command_bits, uint32_t* command);
 
-uint32_t CreateBackgroundColorCommand (const uint16_t rgb);
-uint32_t CreateBallPositionCommand    (const uint16_t x,   const uint16_t y);
-uint32_t CreateBallColorCommand       (const uint16_t rgb);
-uint32_t CreatePlayerPositionCommand  (const uint16_t y,   const uint8_t player);
-uint32_t CreatePlayerColorCommand     (const uint16_t rgb, const uint8_t player);
+uint32_t CreateBackgroundColorCommand  (const uint16_t rgb);
+uint32_t CreateBallPositionCommand     (const uint16_t x, const uint16_t y);
+uint32_t CreateBallColorCommand        (const uint16_t rgb);
+uint32_t CreatePlayerPositionCommand   (const uint16_t y,        const uint8_t player);
+uint32_t CreatePlayerColorCommand      (const uint16_t rgb,      const uint8_t player);
+uint32_t CreatePlayerScoreDigitCommand (const uint8_t  segments, const uint8_t digit, const uint8_t player);
 
 #endif

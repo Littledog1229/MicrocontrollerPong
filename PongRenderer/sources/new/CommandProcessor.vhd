@@ -34,7 +34,21 @@ entity CommandProcessor is
             player_1_color    => ("1111", "0000", "0000"),
 
             player_2_position => (1279-25-100, 0),
-            player_2_color    => ("0000", "0000", "1100")
+            player_2_color    => ("0000", "0000", "1100"),
+            
+            player_1_segments => (
+                ((((1280 / 2) - 25 - (48 * 3 + 40)) + 144, 25), "0111111"),
+                ((((1280 / 2) - 25 - (48 * 3 + 40)) + 96,  25), "0111111"),
+                ((((1280 / 2) - 25 - (48 * 3 + 40)) + 48,  25), "0111111"),
+                ((((1280 / 2) - 25 - (48 * 3 + 40)) + 0,   25), "0111111")
+            ),
+            
+            player_2_segments => (
+                (((1280 / 2) + 25 + 144, 25), "0111111"),
+                (((1280 / 2) + 25 + 96,  25), "0111111"),
+                (((1280 / 2) + 25 + 48,  25), "0111111"),
+                (((1280 / 2) + 25 + 0,   25), "0111111")
+            )
         )
     );
 end CommandProcessor;
@@ -150,6 +164,12 @@ begin
                     out_global_registers.player_2_color.R <= constructed_command(11 downto 8);
                     out_global_registers.player_2_color.G <= constructed_command(7  downto 4);
                     out_global_registers.player_2_color.B <= constructed_command(3  downto 0);
+                end if;
+            elsif (command_id = "000110") then
+                if (constructed_command(9) = '0') then
+                    out_global_registers.player_1_segments(to_integer(unsigned(constructed_command(8 downto 7)))).Segments <= constructed_command(6 downto 0);
+                else
+                    out_global_registers.player_2_segments(to_integer(unsigned(constructed_command(8 downto 7)))).Segments <= constructed_command(6 downto 0);
                 end if;
             end if;
         end if;

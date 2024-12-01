@@ -4,6 +4,8 @@ Pong/.vs
 Pong/Pong/Debug/
 Pong/Pong/Pong.componentinfo.xml
 
+PongRenderer/.idea/
+
 UARTBridge/.idea/
 UARTBridge/UARTBridge.sln.DotSettings.user
 UARTBridge/UARTBridge/bin

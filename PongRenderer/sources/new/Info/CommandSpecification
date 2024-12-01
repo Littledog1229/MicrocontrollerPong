@@ -29,6 +29,8 @@ Command IDs:
  . 000100 -> Set player Y position
  . 000101 -> Set player paddle color
 
+ . 000110 -> Set player 7-segment digit
+
 Set Background Color Command:
  . Command ID: 000000
  . Description:
@@ -96,3 +98,16 @@ Set Player Color Command:
      [rrrr]           -> Red   component
      [gggg]           -> Green component
      [bbbb]           -> Blue  component
+
+Set Player 7-Segment Digit:
+ . Command ID: 000110
+ . Description:
+    Sets the specified players 7-segment score digit to the input 7-segment bits
+ . Bit-pattern:
+    [CCCCCC][uuuuuuuuuuuuuuuu][p][dd][sssssss]
+ . Pattern Specification:
+     [CCCCCC]           -> Command ID
+     [uuuuuuuuuuuuuuuu] -> Unused bits
+     [p]                -> Player (0 is left side, 1 is right side)
+     [dd]               -> Segment number (0 is rightmost, 3 is leftmost)
+     [sssssss]          -> 7-Segment digit (0 is off, 1 is on), following the 7-segment display standard (lsb is a, msb is g)
