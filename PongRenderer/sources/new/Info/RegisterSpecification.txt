@@ -1,0 +1,18 @@
+﻿All of this is specifically designed to render the game 'Pong', and because of that
+it has various registers used for the different game elements. This file contains all
+of the registers with the following information:
+
+-----
+REGISTER_NAME:
+ . Type: [Position, Color, Other]
+ . Size: ?? bits
+ . Layout:
+        Example High: 11 downto 6
+        Example Low:  5  downto 0
+ . Description:
+        This is a sample register description
+
+-----
+
+All registers should have a self-explanatory name, and may even be prefixed with what this
+register is specifically used for.

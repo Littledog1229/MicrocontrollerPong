@@ -1,0 +1,10 @@
+PongRendererProject/
+
+Pong/.vs
+Pong/Pong/Debug/
+Pong/Pong/Pong.componentinfo.xml
+
+UARTBridge/.idea/
+UARTBridge/UARTBridge.sln.DotSettings.user
+UARTBridge/UARTBridge/bin
+UARTBridge/UARTBridge/obj

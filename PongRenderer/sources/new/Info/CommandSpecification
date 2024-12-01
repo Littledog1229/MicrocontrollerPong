@@ -1,0 +1,98 @@
+﻿Communication between this and a microprocessor occurs over the UART, and a specific bit
+pattern must be sent in order to properly do anything on this device. These bit patterns,
+also called 'commands' in this case, get parsed and processed on the board to successfully
+perform a task the other microcontroller wants it to do (ex: set the ball position).
+
+Commands are 32 bits in size and are transmitted in four 8-byte increments from the least
+significant bit to the most significant bit (which means the last thing received
+is the MSB of the command id). To prevent de-synchronization between the start and end of commands,
+all 4 bytes must be sent within a specified time period or else the entire command is discarded.
+
+Command Discard Information:
+ . This is currently not implemented
+ . A new data byte must be received with [0.25?] seconds of the last, otherwise the data
+ will be discarded and the next byte will be treated as the beginning of a new command
+
+Command Bit Specification:
+ . The Command ID bits are defined to be the most significant 6 bits, allowing for 64 unique
+ commands.
+ . Other data is specified as per-command
+ . Commands are read from least significant bit to most significant bit when sent over the UART
+
+Command IDs:
+ . 000000 -> Set Background color
+
+ . 000001 -> Set ball position
+ . 000010 -> Set ball color
+
+ . 000011 -> Reserved [Set player X position]
+ . 000100 -> Set player Y position
+ . 000101 -> Set player paddle color
+
+Set Background Color Command:
+ . Command ID: 000000
+ . Description:
+    Sets the background color register to the specified value
+ . Bit-pattern:
+    [CCCCCC][uuuuuuuuuuuuuu][rrrr][gggg][bbbb]
+ . Pattern Specification:
+    [CCCCCC]         -> Command ID
+    [uuuuuuuuuuuuuu] -> Unused bits
+    [rrrr]           -> Red   component
+    [gggg]           -> Green component
+    [bbbb]           -> Blue  component
+
+Set Ball Position Command:
+ . Command ID: 000001
+ . Description
+    Sets the X and Y position of the ball on the screen (relative to top-left)
+ . Bit-pattern:
+    [CCCCCC][uuuu][XXXXXXXXXXX][YYYYYYYYYYY]
+ . Pattern Specification:
+    [CCCCCC]      -> Command ID
+    [uuuu]        -> Unusaed bits
+    [XXXXXXXXXXX] -> X position
+    [YYYYYYYYYYY] -> Y position
+
+Set Ball Color Command:
+ . Command ID: 000010
+ . Description:
+    Sets the ball color register to the specified value
+ . Bit-pattern:
+    [CCCCCC][uuuuuuuuuuuuuu][rrrr][gggg][bbbb]
+ . Pattern Specification:
+    [CCCCCC]         -> Command ID
+    [uuuuuuuuuuuuuu] -> Unused bits
+    [rrrr]           -> Red   component
+    [gggg]           -> Green component
+    [bbbb]           -> Blue  component
+
+Set Player X Position [UNUSED]:
+ . Command ID: 000011
+ . TODO
+
+Set Player Y Position Command:
+ . Command ID: 000100
+ . Description:
+    Sets the specified players Y position
+ . Bit-pattern:
+    [CCCCCC][uuuuuuuuuuuuuu][p][YYYYYYYYYYY]
+ . Pattern Specification:
+    [CCCCCC]         -> Command ID
+    [uuuuuuuuuuuuuu] -> Unused bits
+    [p]              -> Player (0 is left side, 1 is right side)
+    [YYYYYYYYYYY]    -> Y Position
+
+Set Player Color Command:
+ . Command ID: 000101
+ . Description:
+    Sets the specified players color register to the given value
+ . Bit-pattern:
+    [CCCCCC][uuuuuuuuuuuuu][p][rrrr][gggg][bbbb]
+ . Pattern Specification:
+     [CCCCCC]         -> Command ID
+     [uuuuuuuuuuuuu]  -> Unused bits
+     [p]              -> Player (0 is left side, 1 is right side)
+     [rrrr]           -> Red   component
+     [gggg]           -> Green component
+     [bbbb]           -> Blue  component
