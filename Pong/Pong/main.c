@@ -14,8 +14,8 @@
 uint8_t timer_counter     = 0; // Amount of times the clock has fired, when it becomes 4 it needs to process a new frame
 uint8_t frames_to_process = 1; // Amount of frames to process at this current time (initially 1)
 
-uint8_t game_state = Reset;
-uint8_t dirty_flags;
+uint8_t game_state  = Reset;
+uint8_t dirty_flags = None;
 
 uint16_t ball_color      = BALL_NORMAL_COLOR;
 int16_t  ball_position_x = BALL_INITIAL_POSITION_X;
@@ -37,7 +37,8 @@ uint8_t  ball_bounced_off_paddle = 0;
 uint16_t timer_a = KICKOFF_BALL_HOLD;
 uint16_t timer_b = FLASH_FREQUENCY;
 
-uint8_t flash_state = 0;
+uint8_t  flash_state       = 0;
+int8_t   reset_counter     = 0;
 
 // Utility
 int16_t handlePlayerMovement(int16_t player_position, int16_t player_input, int8_t player_dirty_flag);
@@ -52,38 +53,23 @@ int main(void) {
 	IO_Initialize();
 	TIMER_Initialize();
 	
-	sei(); // Enable global interrupts
+	PerformReset();
 	
-	// General
-	USART_TransmitCommand(CreateBackgroundColorCommand(0b0000000000000000));
-	USART_TransmitCommand(CreateBallPositionCommand(ball_position_x, ball_position_y));
-	USART_TransmitCommand(CreateBallColorCommand(ball_color));
-	USART_TransmitCommand(CreatePlayerPositionCommand(player_1_position_y, 0));
-	USART_TransmitCommand(CreatePlayerPositionCommand(player_2_position_y, 1));
-	USART_TransmitCommand(CreatePlayerColorCommand(0b0000111100000000, 0));
-	USART_TransmitCommand(CreatePlayerColorCommand(0b0000000000001111, 1));
-	
-	// Player 1 score digits (temp values)
-	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(0), 0, 0));
-	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(1), 1, 0));
-	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(2), 2, 0));
-	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(3), 3, 0));
-	
-	// Player 2 score digits (temp values)
-	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(6), 0, 1));
-	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(7), 1, 1));
-	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(8), 2, 1));
-	USART_TransmitCommand(CreatePlayerScoreDigitCommand(numberToSegments(9), 3, 1));
-	
-	// Seed RNG
-	srand(time(NULL));
-	
-	game_state      = BallKickoff;
-	ball_velocity_y = (rand() % BALL_SLOW_VELOCITY);
-		
 	while (1) {
 		// Wait until there is a frame to process
 		while (frames_to_process <= 0) { }
+			
+		if (game_state == Reset) {
+			reset_counter--;
+			
+			if (reset_counter <= 0) {
+				game_state      = BallKickoff;
+				ball_velocity_y = (rand() % BALL_SLOW_VELOCITY);
+			}
+			
+			continue;
+		}
+		
 		
 		uint8_t processing_frames = frames_to_process;
 		frames_to_process = 0;
@@ -129,13 +115,13 @@ void IO_Initialize() {
 	// Here is the controller mapping:
 	// . PC0 -> P1 down
 	// . PC1 -> P1 up
-	// . PC2 -> P2 down
-	// . PC3 -> P2 up
-	// . PC4 -> Reset [needs debouncing]
-	// . PC5 -> Button Power
+	// . PC2 -> Reset [needs debouncing]
+	// . PC3 -> P2 down
+	// . PC4 -> P2 up
+	DDRB  = 0b01111111;
 	DDRC  = 0b11100000;
 	DDRD  = 0b11111111;
-	PORTC = 0b00000000;
+	PORTC = 0b00000100;
 	PORTD = 0b11111111;
 }
 
@@ -159,11 +145,68 @@ void TIMER_Initialize() {
 // | Frame Functions |
 // -------------------
 
+void PerformReset() {
+	cli(); // Disable global interrupts
+	
+	// Reset game state to initial state
+	timer_counter     = 0;
+	frames_to_process = 1;
+	
+	game_state  = Reset;
+	dirty_flags = None;
+	
+	ball_color      = BALL_NORMAL_COLOR;
+	ball_position_x = BALL_INITIAL_POSITION_X;
+	ball_position_y = BALL_INITIAL_POSITION_Y;
+	ball_velocity_x = BALL_SLOW_VELOCITY;
+	ball_velocity_y = BALL_SLOW_VELOCITY;
+	
+	player_1_position_x = 100;
+	player_1_position_y = INITIAL_PLAYER_Y;
+	
+	player_2_position_x = SCREEN_WIDTH - 25 - 100 - 1;
+	player_2_position_y = INITIAL_PLAYER_Y;
+	
+	player_1_score = 0;
+	player_2_score = 0;
+	
+	ball_bounced_off_paddle = 0;
+	
+	timer_a = KICKOFF_BALL_HOLD;
+	timer_b = FLASH_FREQUENCY;
+	
+	flash_state   = 0;
+	reset_counter = 0;
+	
+	// Transmit all command states
+	Synchronize();
+	
+	sei(); // Enable global interrupts
+	
+	reset_counter = RESET_FRAME_WAIT; // 2 second start delay
+	
+	// Seed RNG
+	srand(time(NULL));
+}
+
+void Synchronize() {
+	USART_TransmitCommand(CreateBackgroundColorCommand(0b0000000000000000));            // Background Color
+	USART_TransmitCommand(CreateBallPositionCommand(ball_position_x, ball_position_y)); // Ball Position
+	USART_TransmitCommand(CreateBallColorCommand(ball_color));                          // Ball Color
+	USART_TransmitCommand(CreatePlayerPositionCommand(player_1_position_y, 0));         // Player 1 Y Position
+	USART_TransmitCommand(CreatePlayerPositionCommand(player_2_position_y, 1));         // Player 2 Y Position
+	USART_TransmitCommand(CreatePlayerColorCommand(0b0000111100000000, 0));             // Player 1 Color
+	USART_TransmitCommand(CreatePlayerColorCommand(0b0000000000001111, 1));             // Player 1 Color
+	
+	transmitPlayerScore(0); // Player 1 Score
+	transmitPlayerScore(1); // Player 2 Score
+}
+
 void ProcessFrame() {
 	volatile uint8_t input_byte = PINC & 0b00011111;
 	
 	// Extract general purpose button inputs
-	uint8_t reset_triggered = (input_byte & 0b00000100) != 0;
+	uint8_t reset_input = (input_byte & 0b00000100) != 0;
 	
 	// Extract player 1 inputs from input byte
 	uint8_t player_1_input_up   = (input_byte & 0b00000001) != 0;
@@ -176,6 +219,22 @@ void ProcessFrame() {
 	// Calculate player input vectors (do not move when both are held)
 	int8_t player_1_input = player_1_input_up - player_1_input_down;
 	int8_t player_2_input = player_2_input_up - player_2_input_down;
+	
+	//
+	
+	// Reset Input Handling
+	if (reset_input == 0) {
+		reset_counter++;
+		
+		if (reset_counter >= FRAMES_TO_RESET) {
+			PerformReset();
+			return;
+		}
+	} else {
+		reset_counter--;
+		if (reset_counter < 0)
+			reset_counter = 0;
+	}
 	
 	// Player 1 Input Handling
 	if (player_1_input != 0)

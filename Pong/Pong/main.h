@@ -45,12 +45,15 @@
 // This used to be (BALL_VELOCITY / 2), but it was causing more problems than it was worth for non-float velocity
 #define PHYSICS_SUBSTEPS (uint8_t) 1
 
-#define BALL_NORMAL_COLOR     (uint16_t) 0b0000111111111111;
-#define BALL_FLASH_DARK_COLOR (uint16_t) 0b0000010101010101;
+#define BALL_NORMAL_COLOR     (uint16_t) 0b0000111111111111
+#define BALL_FLASH_DARK_COLOR (uint16_t) 0b0000010101010101
 
 #define INITIAL_PLAYER_Y        (uint16_t) ((SCREEN_HEIGHT / 2) - (PADDLE_HEIGHT / 2))
-#define BALL_INITIAL_POSITION_X (uint16_t) 626;
-#define BALL_INITIAL_POSITION_Y (uint16_t) 498;
+#define BALL_INITIAL_POSITION_X (uint16_t) 626
+#define BALL_INITIAL_POSITION_Y (uint16_t) 498
+
+#define FRAMES_TO_RESET  (uint8_t) 120
+#define RESET_FRAME_WAIT (uint8_t) 120
 
 enum DirtyFlags {
 	None              = 0,
@@ -76,6 +79,8 @@ void TIMER_Initialize();
 
 // Frame Processing
 
+void PerformReset();
+void Synchronize();
 void ProcessFrame();
 void SendCommands();
 
